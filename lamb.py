@@ -1,25 +1,8 @@
-"""Lamb optimizer."""
+# From https://github.com/cybertronai/pytorch-lamb/blob/master/pytorch_lamb/lamb.py
 
-import collections
 import math
-
 import torch
-# from tensorboardX import SummaryWriter
 from torch.optim import Optimizer
-
-
-# def log_lamb_rs(optimizer: Optimizer, event_writer: SummaryWriter, token_count: int):
-#     """Log a histogram of trust ratio scalars in across layers."""
-#     results = collections.defaultdict(list)
-#     for group in optimizer.param_groups:
-#         for p in group['params']:
-#             state = optimizer.state[p]
-#             for i in ('weight_norm', 'adam_norm', 'trust_ratio'):
-#                 if i in state:
-#                     results[i].append(state[i])
-
-#     for k, v in results.items():
-#         event_writer.add_histogram(f'lamb/{k}', torch.tensor(v), token_count)
 
 class Lamb(Optimizer):
     r"""Implements Lamb algorithm.

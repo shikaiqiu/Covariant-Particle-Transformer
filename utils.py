@@ -1,14 +1,7 @@
 import torch
-import torch.nn.functional as F
 import numpy as np
-import os
-import os.path as osp 
 import torch
-import itertools
-import random
-from torch_geometric.data import Dataset
 from torch_geometric.data import Data, Batch
-from torch.utils.data import IterableDataset
 
 dataset_id = {
 	't_schan': 0,
@@ -105,34 +98,6 @@ def get_to_torch(pad_y_up_to, detector_x=False, detector_y=False, test=False):
 		print('Y: (pT, y, phi, m)')
 	return lambda data: to_torch(data, pad_y_up_to=pad_y_up_to, detector_x=detector_x, detector_y=detector_y, test=test)
 
-def get_xy_graph(input_graph, num_target, max_num_output, device=None):
-	if not isinstance(input_graph, Batch):
-		node_features, batch = input_graph.x, torch.zeros(input_graph.x.shape[0])
-	else:
-		node_features, batch = input_graph.x, input_graph.batch
-	num_batches = int((torch.max(batch) + 1).item())
-	# create cross attention edges between output nodes and input nodes
-	source_nodes = torch.arange(batch.size(0), device=batch.device)
-	cross_attn_edge_tensors = []
-	for offset in range(max_num_output):
-		output_nodes = max_num_output * batch + offset
-		cross_attn_edge_tensors.append(torch.stack([source_nodes, output_nodes]))
-	cross_attn_edges = torch.cat(cross_attn_edge_tensors, dim=1).long()
-	# create self attention edges among output nodes
-	self_attn_edge_tensors = [
-		max_num_output * b +
-		torch.stack([
-				i * torch.ones(num_target[b] - 1, device=batch.device), 
-				torch.cat([torch.arange(0, i, device=batch.device), torch.arange(i + 1, num_target[b], device=batch.device)])
-			], dim=0)
-		for b in range(num_batches) for i in range(num_target[b])
-	]
-	self_attn_edges = torch.cat(self_attn_edge_tensors, dim=1).long()
-	if device == None:
-		device = node_features.device
-	return XYData(node_features, torch.zeros([num_batches * max_num_output, 4]).to(device), input_graph.edge_index, self_attn_edges.to(device), cross_attn_edges.to(device))
-
-
 def make_graph(data, max_num_output, drop_one_hot, test, train_with_xy_graph, device=None):
 	node_features, edge_tuples, edge_features = data['x']
 	node_features = torch.FloatTensor(node_features)
@@ -172,7 +137,47 @@ def make_graph(data, max_num_output, drop_one_hot, test, train_with_xy_graph, de
 		data['graph'] = graph
 	return data
 
+def split_dataset_rand(D):
+	n_train = int(len(D) * 0.8)
+	n_val = int(len(D) * 0.1)
+	n_test = len(D) - n_train - n_val
+	return torch.utils.data.random_split(D, [n_train, n_val, n_test], generator=torch.Generator().manual_seed(42))
 
+def split_dataset(D, name, max_train_event=None, max_val_event=None, max_test_event=None):
+	number = torch.load(f'{name}/number.pt')
+	number = np.array(number)
+	idx = np.arange(number.shape[0])
+	train_idx = idx[number % 4 < 3][:max_train_event]
+	val_idx = idx[number % 8 == 3][:max_val_event]
+	test_idx = idx[number % 8 == 7][:max_test_event]
+	return torch.utils.data.Subset(D, train_idx), torch.utils.data.Subset(D, val_idx), torch.utils.data.Subset(D, test_idx)
+
+def get_xy_graph(input_graph, num_target, max_num_output, device=None):
+	if not isinstance(input_graph, Batch):
+		node_features, batch = input_graph.x, torch.zeros(input_graph.x.shape[0])
+	else:
+		node_features, batch = input_graph.x, input_graph.batch
+	num_batches = int((torch.max(batch) + 1).item())
+	# create cross attention edges between output nodes and input nodes
+	source_nodes = torch.arange(batch.size(0), device=batch.device)
+	cross_attn_edge_tensors = []
+	for offset in range(max_num_output):
+		output_nodes = max_num_output * batch + offset
+		cross_attn_edge_tensors.append(torch.stack([source_nodes, output_nodes]))
+	cross_attn_edges = torch.cat(cross_attn_edge_tensors, dim=1).long()
+	# create self attention edges among output nodes
+	self_attn_edge_tensors = [
+		max_num_output * b +
+		torch.stack([
+				i * torch.ones(num_target[b] - 1, device=batch.device), 
+				torch.cat([torch.arange(0, i, device=batch.device), torch.arange(i + 1, num_target[b], device=batch.device)])
+			], dim=0)
+		for b in range(num_batches) for i in range(num_target[b])
+	]
+	self_attn_edges = torch.cat(self_attn_edge_tensors, dim=1).long()
+	if device == None:
+		device = node_features.device
+	return XYData(node_features, torch.zeros([num_batches * max_num_output, 4]).to(device), input_graph.edge_index, self_attn_edges.to(device), cross_attn_edges.to(device))
 
 class XYData(Data):
 	def __init__(self, x, y, x_edge_index, y_edge_index, xy_edge_index):
@@ -191,45 +196,6 @@ class XYData(Data):
 			return self.x_out.size(0)
 		else:
 			return super().__inc__(key, value)
-
-def split_dataset_rand(D):
-	n_train = int(len(D) * 0.8)
-	n_val = int(len(D) * 0.1)
-	n_test = len(D) - n_train - n_val
-	return torch.utils.data.random_split(D, [n_train, n_val, n_test], generator=torch.Generator().manual_seed(42))
-
-def split_dataset(D, name, max_train_event=None, max_val_event=None, max_test_event=None):
-	number = torch.load(f'{name}/number.pt')
-	number = np.array(number)
-	idx = np.arange(number.shape[0])
-	train_idx = idx[number % 4 < 3][:max_train_event]
-	val_idx = idx[number % 8 == 3][:max_val_event]
-	test_idx = idx[number % 8 == 7][:max_test_event]
-	return torch.utils.data.Subset(D, train_idx), torch.utils.data.Subset(D, val_idx), torch.utils.data.Subset(D, test_idx)
-
-def chamfer_dist(p1, p2, p=2, return_mean=True, scale=1):
-
-	'''
-	Calculate Chamfer Distance between two point sets
-	:param p1: size[B, N, D]
-	:param p2: size[B, M, D]
-	:param debug: whether need to output debug info
-	:return: mean over this batch of Chamfer Distance of two point sets
-	'''
-	assert p1.size(0) == p2.size(0) and p1.size(2) == p2.size(2)
-	p1 = p1.unsqueeze(1)
-	p2 = p2.unsqueeze(1)
-	p1 = p1.repeat(1, p2.size(2), 1, 1)
-	p1 = p1.transpose(1, 2)
-	p2 = p2.repeat(1, p1.size(1), 1, 1)
-	diff = torch.add(p1, torch.neg(p2))
-	diff = diff * scale
-	dist = torch.norm(diff, p=p, dim=3)
-	dist = torch.min(dist, dim=2)[0]
-	if return_mean:
-		dist = torch.mean(dist) # (1)
-	else:
-		return dist # (B, N)
 
 def get_plot_configs(detector):
 	if detector:

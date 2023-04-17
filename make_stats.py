@@ -126,7 +126,7 @@ def run(test_result, output_dir, max_num_output, bins, entries_per_bin):
 				'Accuracy(# top)',
 				'Chi2(Reduced)', 'Chi2(Pt)', 'Chi2(Y)', 'Chi2(Phi)', 'Chi2(M)',
 				'MedPull(Pt)', 'MedPull(Y)', 'MedPull(Phi)', 'MedPull(M)',
-				'MedAbsPull(Pt)', 'MedAbsPull(Y)', 'MedAbsPull(Phi)', 'MedAbsPull(M)',
+				'Resolution(Pt)', 'Resolution(Y)', 'Resolution(Phi)', 'Resolution(M)',
 			]
 			csvwriter.writerow(fields)
 			for cut_name in cuts:
@@ -158,7 +158,7 @@ def run(test_result, output_dir, max_num_output, bins, entries_per_bin):
 				if not osp.exists(cut_dir + '_vs_gnn'):
 					os.makedirs(cut_dir + '_vs_gnn')
 				# making pull plots, error plots, ...
-				med_pull_pred, med_abs_pull_pred, acc_pred = get_global_metric( 
+				med_pull_pred, resolution_pred, acc_pred = get_global_metric( 
 					y_target, 
 					y_pred, 
 					test_result['num_target'],
@@ -183,11 +183,11 @@ def run(test_result, output_dir, max_num_output, bins, entries_per_bin):
 					+ [acc_pred] \
 					+ chi2 \
 					+ med_pull_pred.tolist() \
-					+ med_abs_pull_pred.tolist()
+					+ resolution_pred.tolist()
 				csvwriter.writerow(row)
 
 				if cut_name == 'Truth-matched' or 'jet' in cut_name:
-					med_pull_reco, med_abs_pull_reco, _ = get_global_metric(
+					med_pull_reco, resolution_reco, _ = get_global_metric(
 						y_target, 
 						y_reco, 
 						test_result['num_target'],
@@ -203,7 +203,7 @@ def run(test_result, output_dir, max_num_output, bins, entries_per_bin):
 						+ [np.nan] \
 						+ [np.nan] * 5 \
 						+ med_pull_reco.tolist() \
-						+ med_abs_pull_reco.tolist()
+						+ resolution_reco.tolist()
 					csvwriter.writerow(row)
 
 					# make plots for pred vs gnn reco in a separate dir
@@ -215,7 +215,7 @@ def run(test_result, output_dir, max_num_output, bins, entries_per_bin):
 						bins,
 						entries_per_bin if (cut_name == 'Truth-matched') else 1e10
 					)
-					med_pull_reco, med_abs_pull_reco, _ = get_global_metric(
+					med_pull_reco, resolution_reco, _ = get_global_metric(
 						y_target, 
 						y_gnn_reco, 
 						test_result['num_target'],
@@ -231,7 +231,7 @@ def run(test_result, output_dir, max_num_output, bins, entries_per_bin):
 						+ [np.nan] \
 						+ [np.nan] * 5 \
 						+ med_pull_reco.tolist() \
-						+ med_abs_pull_reco.tolist()
+						+ resolution_reco.tolist()
 					csvwriter.writerow(row)
 
 			# collect results
@@ -260,11 +260,6 @@ def run(test_result, output_dir, max_num_output, bins, entries_per_bin):
 
 		# csv
 		shutil.copy(csv_path, osp.join(summary_dir, 'results.csv'))
-
-		# latex tables
-
-		# latex main body
-
 
 
 def get_binned_metric(y_target, y_pred, y_pred_alt, num_pred, num_target, truth_matched, attention_matched, precut, output_dir, max_num_output, bins, entries_per_bin):

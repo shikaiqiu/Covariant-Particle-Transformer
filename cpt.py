@@ -3,15 +3,11 @@ import itertools
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from torch.nn import Sequential, Linear, LeakyReLU, BatchNorm1d, Dropout, LayerNorm
+from torch.nn import Sequential, Linear, LeakyReLU, Dropout, LayerNorm
 from torch_scatter import scatter_add
 from torch_geometric.utils import softmax
 from transformer import TransformerEncoder, TransformerDecoder, GraphMLP, GlobalAttention
 from base_model import BaseModel
-import logging
-import time
-import datetime
-import matplotlib.pylab as pylab
 import matplotlib.pyplot as plt
 import utils
 from tqdm import tqdm
@@ -33,7 +29,7 @@ class CovariantTopFormer(BaseModel):
 		self.uniform_attention = uniform_attention
 		super().__init__(in_dim, out_dim, output_dir, use_gpu, lr, schedule_lr)
 		self.cross_entropy_loss = nn.CrossEntropyLoss()
-		self.beta = beta
+		self.beta = beta # weight for the loss on predicting the number of tops
 		self.match_scale_factor = match_scale_factor.to(self.device)
 		self.p_norm = p_norm
 		self.loss_scale_factor = 1/torch.FloatTensor([100, 100, 1, 5]).to(self.device) # px, py, eta, m
@@ -652,6 +648,7 @@ class CovariantTopFormer(BaseModel):
 		# return torch.cat([self.pre_decoder.get_alpha(), self.covariant_decoder.get_alpha()], dim=1) # (|E|, 1 + L, H)
 		return self.covariant_decoder.get_alpha() # (|E|, L, H)
 
+# From https://pytorch-geometric.readthedocs.io/en/latest/_modules/torch_geometric/nn/aggr/set2set.html#Set2Set
 class Set2Set(torch.nn.Module):
 	def __init__(self, in_channels, num_outputs, num_layers=1):
 		super().__init__()
