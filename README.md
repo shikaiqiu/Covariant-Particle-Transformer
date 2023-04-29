@@ -18,7 +18,6 @@ sh download_pretrained.sh
 ```
 
 3. **(Optional) Download datasets**:
-[WIP: come back in a few days to download the datasets :)]
 Note the $ttH$ and $tttt$ dataset is ~30GB in size each, while the other datasets are smaller. You can comment out the lines in `download_datasets.sh` to download only the datasets you need.
 
 ```
