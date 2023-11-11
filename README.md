@@ -1,6 +1,6 @@
 # Covariant Particle Transformer
 
-This repository contains the code and pretrained models for ["A Holistic Approach to Predicting Top Quark Kinematic Properties with the Covariant Particle Transformer"](https://arxiv.org/pdf/2203.05687.pdf).
+This repository is forked from [this Github](https://github.com/shikaiqiu/Covariant-Particle-Transformer), which is the official repository for the code and pretrained models of ["A Holistic Approach to Predicting Top Quark Kinematic Properties with the Covariant Particle Transformer"](https://arxiv.org/pdf/2203.05687.pdf).  The Jupyter notebook ```LabelingWithoutMatching.ipynb``` shows how the regression tools from the CPT paper can be re-used for jet labeling and includes the plots for the paper "Parton Labeling without Matching: Unveiling Emergent Labelling Capabilities in Regression Models".  All the other instructions below are unchanged from the CPT GitHub.
 
 ## Getting Started
 Follow these instructions to set up the environment, download pretrained models, and download datasets used in the paper:
@@ -30,12 +30,22 @@ To use the pretrained models, refer to the Jupyter notebooks ```pretrained_ttH.i
 To train a new model, use the ```train.ipynb``` Jupyter notebook.
 
 ## Citation
-Please cite our paper as:
+Please cite the CPT paper as:
 ```
 @article{qiu2022holistic,
   title={A Holistic Approach to Predicting Top Quark Kinematic Properties with the Covariant Particle Transformer},
   author={Qiu, Shikai and Han, Shuo and Ju, Xiangyang and Nachman, Benjamin and Wang, Haichen},
   journal={arXiv preprint arXiv:2203.05687},
   year={2022}
+}
+```
+and the labeling paper as
+
+```
+@article{qiu2023holistic,
+  title={Parton Labeling without Matching: Unveiling Emergent Labelling Capabilities in Regression Models},
+  author={Qiu, Shikai and Han, Shuo and Ju, Xiangyang and Nachman, Benjamin and Wang, Haichen},
+  journal={arXiv preprint arXiv:2304.xxxxx},
+  year={2023}
 }
 ```
